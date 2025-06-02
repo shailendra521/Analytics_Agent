@@ -6,7 +6,7 @@ const Header = () => {
 
             <div className="flex items-center relative">
                 <div className="absolute -left-3 top-1/2 transform -translate-y-1/2 w-1.5 h-6 bg-teal-400 rounded-full opacity-80"></div>
-                <span className="font-bold text-white text-xl tracking-tight">Perplexity 2.0</span>
+                <span className="font-bold text-white text-xl tracking-tight">AnalytIQ</span>
             </div>
 
             <div className="flex items-center space-x-1">

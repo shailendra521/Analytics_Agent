@@ -20,6 +20,7 @@ interface Message {
   isLoading?: boolean;
   searchInfo?: SearchInfo;
   progress?: string;
+  conversation?: string[];
 }
 
 interface SearchData {
@@ -167,6 +168,16 @@ const Home = () => {
                   break;
                 case 'generate_sql_query_summary':
                   progress = "Generating query summary...";
+                  if (data.conversation && !hasFinalAnswer) {
+                    // Update message with conversation only if no final answer yet
+                    setMessages(prev =>
+                      prev.map(msg =>
+                        msg.id === aiResponseId
+                          ? { ...msg, conversation: data.conversation, isLoading: true }
+                          : msg
+                      )
+                    );
+                  }
                   break;
                 case 'generate_sql_query':
                   progress = "Creating SQL query...";
@@ -183,11 +194,11 @@ const Home = () => {
                 case 'aggregate_result':
                   if (data.final_answer) {
                     hasFinalAnswer = true;
-                    // Show the final answer
+                    // Show the final answer and clear conversation
                     setMessages(prev =>
                       prev.map(msg =>
                         msg.id === aiResponseId
-                          ? { ...msg, content: data.final_answer!, isLoading: false }
+                          ? { ...msg, content: data.final_answer!, isLoading: false}
                           : msg
                       )
                     );
