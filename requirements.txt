@@ -1,0 +1,10 @@
+pandas
+numpy
+sqlalchemy
+pymysql
+langchain_community
+fastapi
+sse_starlette
+IPython
+cryptography
+uvicorn
