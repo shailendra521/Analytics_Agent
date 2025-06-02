@@ -19,6 +19,7 @@ interface Message {
   type: string;
   isLoading?: boolean;
   searchInfo?: SearchInfo;
+  progress?: string;
 }
 
 interface SearchData {
@@ -28,6 +29,22 @@ interface SearchData {
   error?: string;
 }
 
+interface SQLQueryData {
+  is_read_query?: boolean;
+  node?: string;
+  relevant_tables?: string[];
+  relevant_columns?: string[];
+  columns_relations?: string[];
+  summary?: string;
+  conversation?: string[];
+  sql_query?: string;
+  query_result?: string;
+  type_of_output?: string;
+  plot_type?: string;
+  final_answer?: string;
+  status?: string;
+}
+
 interface EventData {
   type: 'checkpoint' | 'content' | 'search_start' | 'search_results' | 'search_error' | 'end';
   content?: string;
@@ -35,6 +52,19 @@ interface EventData {
   query?: string;
   urls?: string[] | string;
   error?: string;
+  node?: string;
+  is_read_query?: boolean;
+  relevant_tables?: string[];
+  relevant_columns?: string[];
+  columns_relations?: string[];
+  summary?: string;
+  conversation?: string[];
+  sql_query?: string;
+  query_result?: string;
+  type_of_output?: string;
+  plot_type?: string;
+  final_answer?: string;
+  status?: string;
 }
 
 const Home = () => {
@@ -71,6 +101,8 @@ const Home = () => {
       try {
         // Create AI response placeholder
         const aiResponseId = newMessageId + 1;
+        let hasFinalAnswer = false;
+
         setMessages(prev => [
           ...prev,
           {
@@ -88,7 +120,7 @@ const Home = () => {
         ]);
 
         // Create URL with checkpoint ID if it exists
-        let url = `http://localhost:8000/chat_stream/${encodeURIComponent(userInput)}`;
+        let url = `http://localhost:8000/stream?query=${encodeURIComponent(userInput)}`;
         if (checkpointId) {
           url += `?checkpoint_id=${encodeURIComponent(checkpointId)}`;
         }
@@ -116,18 +148,75 @@ const Home = () => {
               // Store the checkpoint ID for future requests
               setCheckpointId(data.checkpoint_id);
             }
-            else if (data.type === 'content' && data.content) {
-              streamedContent += data.content;
-              hasReceivedContent = true;
+            else if (data.node) {
+              // Handle SQL query related data
+              let progress = "";
+              
+              switch (data.node) {
+                case 'query_checker':
+                  progress = "Analyzing query...";
+                  break;
+                case 'select_relevant_tables':
+                  progress = "Identifying relevant tables...";
+                  break;
+                case 'relevant_column':
+                  progress = "Analyzing columns...";
+                  break;
+                case 'column_relations':
+                  progress = "Checking relationships...";
+                  break;
+                case 'generate_sql_query_summary':
+                  progress = "Generating query summary...";
+                  break;
+                case 'generate_sql_query':
+                  progress = "Creating SQL query...";
+                  break;
+                case 'filter_query':
+                  progress = "Optimizing query...";
+                  break;
+                case 'execute_query':
+                  progress = "Executing query...";
+                  break;
+                case 'select_type_output':
+                  progress = "Processing results...";
+                  break;
+                case 'aggregate_result':
+                  if (data.final_answer) {
+                    hasFinalAnswer = true;
+                    // Show the final answer
+                    setMessages(prev =>
+                      prev.map(msg =>
+                        msg.id === aiResponseId
+                          ? { ...msg, content: data.final_answer!, isLoading: false }
+                          : msg
+                      )
+                    );
+                  }
+                  break;
+              }
 
-              // Update message with accumulated content
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === aiResponseId
-                    ? { ...msg, content: streamedContent, isLoading: false }
-                    : msg
-                )
-              );
+              if (progress) {
+                // Update message with progress
+                setMessages(prev =>
+                  prev.map(msg =>
+                    msg.id === aiResponseId
+                      ? { ...msg, progress: progress, isLoading: true }
+                      : msg
+                  )
+                );
+              }
+
+              // If status is complete, ensure loading is finished
+              if (data.status === 'complete') {
+                setMessages(prev =>
+                  prev.map(msg =>
+                    msg.id === aiResponseId
+                      ? { ...msg, isLoading: false }
+                      : msg
+                  )
+                );
+                eventSource.close();
+              }
             }
             else if (data.type === 'search_start' && data.query) {
               // Create search info with 'searching' stage
@@ -142,7 +231,7 @@ const Home = () => {
               setMessages(prev =>
                 prev.map(msg =>
                   msg.id === aiResponseId
-                    ? { ...msg, content: streamedContent, searchInfo: newSearchInfo, isLoading: false }
+                    ? { ...msg, searchInfo: newSearchInfo, isLoading: false }
                     : msg
                 )
               );
@@ -164,7 +253,7 @@ const Home = () => {
                 setMessages(prev =>
                   prev.map(msg =>
                     msg.id === aiResponseId
-                      ? { ...msg, content: streamedContent, searchInfo: newSearchInfo, isLoading: false }
+                      ? { ...msg, searchInfo: newSearchInfo, isLoading: false }
                       : msg
                   )
                 );
@@ -185,7 +274,7 @@ const Home = () => {
               setMessages(prev =>
                 prev.map(msg =>
                   msg.id === aiResponseId
-                    ? { ...msg, content: streamedContent, searchInfo: newSearchInfo, isLoading: false }
+                    ? { ...msg, searchInfo: newSearchInfo, isLoading: false }
                     : msg
                 )
               );
@@ -219,8 +308,8 @@ const Home = () => {
           console.error("EventSource error occurred");
           eventSource.close();
 
-          // Only update with error if we don't have content yet
-          if (!streamedContent) {
+          // Only update with error if we don't have any content and no final answer has been received
+          if (!streamedContent && !hasFinalAnswer) {
             setMessages(prev =>
               prev.map(msg =>
                 msg.id === aiResponseId

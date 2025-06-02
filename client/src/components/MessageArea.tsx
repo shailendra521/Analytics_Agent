@@ -1,5 +1,22 @@
 import React from 'react';
 
+interface SearchInfo {
+  stages: string[];
+  query: string;
+  urls: string[] | string;
+  error?: string;
+}
+
+interface Message {
+  id: number;
+  content: string;
+  isUser: boolean;
+  type: string;
+  isLoading?: boolean;
+  searchInfo?: SearchInfo;
+  progress?: string;
+}
+
 const PremiumTypingAnimation = () => {
     return (
         <div className="flex items-center">
@@ -15,7 +32,7 @@ const PremiumTypingAnimation = () => {
     );
 };
 
-const SearchStages = ({ searchInfo }) => {
+const SearchStages = ({ searchInfo }: { searchInfo: SearchInfo }) => {
     if (!searchInfo || !searchInfo.stages || searchInfo.stages.length === 0) return null;
 
     return (
@@ -59,18 +76,18 @@ const SearchStages = ({ searchInfo }) => {
                             <span className="font-medium mb-2 ml-2">Reading</span>
 
                             {/* Search Results */}
-                            {searchInfo.urls && searchInfo.urls.length > 0 && (
+                            {searchInfo.urls && (Array.isArray(searchInfo.urls) ? searchInfo.urls.length > 0 : searchInfo.urls) && (
                                 <div className="pl-2 space-y-1">
                                     <div className="flex flex-wrap gap-2">
                                         {Array.isArray(searchInfo.urls) ? (
-                                            searchInfo.urls.map((url, index) => (
+                                            searchInfo.urls.map((url: string, index: number) => (
                                                 <div key={index} className="bg-gray-100 text-xs px-3 py-1.5 rounded border border-gray-200 truncate max-w-[200px] transition-all duration-200 hover:bg-gray-50">
-                                                    {typeof url === 'string' ? url : JSON.stringify(url).substring(0, 30)}
+                                                    {url.substring(0, 30)}
                                                 </div>
                                             ))
                                         ) : (
                                             <div className="bg-gray-100 text-xs px-3 py-1.5 rounded border border-gray-200 truncate max-w-[200px] transition-all duration-200 hover:bg-gray-50">
-                                                {typeof searchInfo.urls === 'string' ? searchInfo.urls.substring(0, 30) : JSON.stringify(searchInfo.urls).substring(0, 30)}
+                                                {String(searchInfo.urls).substring(0, 30)}
                                             </div>
                                         )}
                                     </div>
@@ -105,18 +122,13 @@ const SearchStages = ({ searchInfo }) => {
     );
 };
 
-const MessageArea = ({ messages }) => {
+const MessageArea = ({ messages }: { messages: Message[] }) => {
     return (
         <div className="flex-grow overflow-y-auto bg-[#FCFCF8] border-b border-gray-100" style={{ minHeight: 0 }}>
             <div className="max-w-4xl mx-auto p-6">
-                {messages.map((message) => (
+                {messages.map((message: Message) => (
                     <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'} mb-5`}>
                         <div className="flex flex-col max-w-md">
-                            {/* Search Status Display - Now ABOVE the message */}
-                            {/* {!message.isUser && message.searchInfo && (
-                                <SearchStages searchInfo={message.searchInfo} />
-                            )} */}
-
                             {/* Message Content */}
                             <div
                                 className={`rounded-lg py-3 px-5 ${message.isUser
@@ -125,7 +137,14 @@ const MessageArea = ({ messages }) => {
                                     }`}
                             >
                                 {message.isLoading ? (
-                                    <PremiumTypingAnimation />
+                                    <div className="flex flex-col gap-2">
+                                        <PremiumTypingAnimation />
+                                        {message.progress && (
+                                            <div className="text-xs text-gray-500 mt-2">
+                                                {message.progress}
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     message.content || (
                                         // Fallback if content is empty but not in loading state
